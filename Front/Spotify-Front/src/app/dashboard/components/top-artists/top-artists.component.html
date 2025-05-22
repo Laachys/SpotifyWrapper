@@ -1,0 +1,39 @@
+<div class="top-artists-container">
+  <div class="chart-wrapper">
+    <ngx-charts-bar-vertical
+      *ngIf="topArtistsChartData && topArtistsChartData.length > 0"
+      [results]="topArtistsChartData"
+      [view]="view"
+      [xAxis]="showXAxis"
+      [yAxis]="showYAxis"
+      [showXAxisLabel]="showXAxisLabel"
+      [showYAxisLabel]="showYAxisLabel"
+      [xAxisLabel]="xAxisLabel"
+      [yAxisLabel]="yAxisLabel"
+      [gradient]="gradient"
+      [legend]="showLegend"
+      [scheme]="colorScheme"
+      [barPadding]="10"
+      [roundDomains]="true"
+      [tooltipDisabled]="false"
+      (select)="onSelect($event)">
+    </ngx-charts-bar-vertical>
+
+    <div *ngIf="!topArtistsChartData || topArtistsChartData.length === 0" class="no-data-message">
+      Cargando gráfico de artistas principales o no hay datos disponibles.
+    </div>
+  </div>
+
+  <div class="artists-list">
+    <div *ngIf="topArtistsList && topArtistsList.length > 0" class="artist-items">
+      <div *ngFor="let artist of topArtistsList" class="artist-item">
+        <img [src]="artist.imageUrl" [alt]="artist.name" class="artist-image">
+        <p class="artist-name">{{ artist.name }}</p>
+        <p class="artist-popularity">Popularidad: {{ artist.popularity }}</p>
+      </div>
+    </div>
+    <div *ngIf="!topArtistsList || topArtistsList.length === 0" class="no-data-message">
+      Cargando lista de artistas o no hay datos.
+    </div>
+  </div>
+</div>

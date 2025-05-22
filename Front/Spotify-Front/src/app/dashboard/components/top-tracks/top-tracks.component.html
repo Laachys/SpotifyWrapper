@@ -1,0 +1,15 @@
+<div class="top-tracks-container">
+  <div *ngIf="tracks && tracks.length > 0; else noTracks">
+    <div *ngFor="let track of tracks" class="track-item">
+      <img [src]="track.album.images[0]?.url" alt="{{track.name}}" class="track-image">
+      <div class="track-info">
+        <p class="track-name">{{ track.name }}</p>
+        <p class="track-artist">{{ track.artists[0]?.name }}</p>
+      </div>
+    </div>
+  </div>
+  <ng-template #noTracks>
+    <p>No hay canciones principales disponibles.</p>
+  </ng-template>
+
+  </div>

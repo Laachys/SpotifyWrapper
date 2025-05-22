@@ -1,0 +1,21 @@
+<div class="genre-chart-container">
+  <ngx-charts-bar-vertical
+    *ngIf="genreData && genreData.length > 0"
+    [results]="genreData"
+    [view]="view"
+    [xAxis]="showXAxis"
+    [yAxis]="showYAxis"
+    [showXAxisLabel]="showXAxisLabel"
+    [showYAxisLabel]="showYAxisLabel"
+    [xAxisLabel]="xAxisLabel"
+    [yAxisLabel]="yAxisLabel"
+    [gradient]="gradient"
+    [legend]="showLegend"
+    [scheme]="colorScheme"
+    (select)="onSelect($event)">
+  </ngx-charts-bar-vertical>
+
+  <div *ngIf="!genreData || genreData.length === 0" class="no-data-message">
+    Cargando géneros o no hay datos disponibles.
+  </div>
+</div>

@@ -1,0 +1,14 @@
+<div class="activity-container">
+  <h3>Actividad Reciente</h3>
+  <ngx-charts-line-chart
+    [view]="view"
+    [scheme]="colorScheme"
+    [results]="formatData()"
+    [gradient]="gradient"
+    [xAxis]="showXAxis"
+    [yAxis]="showYAxis"
+    [legend]="showLegend"
+    [autoScale]="autoScale"
+    [timeline]="timeline">
+  </ngx-charts-line-chart>
+</div>
