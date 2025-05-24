@@ -1,5 +1,6 @@
+
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnInit, OnChanges, SimpleChanges, ElementRef, HostListener } from '@angular/core'; // Importa OnChanges, SimpleChanges, ElementRef, HostListener
 import { NgxChartsModule } from '@swimlane/ngx-charts';
 import { Color, ScaleType } from '@swimlane/ngx-charts';
 
@@ -7,41 +8,43 @@ import { Color, ScaleType } from '@swimlane/ngx-charts';
   selector: 'app-recent-activity',
   standalone: true,
   templateUrl: './recent-activity.component.html',
-  imports:[CommonModule,
-    NgxChartsModule],
+  imports:[CommonModule, NgxChartsModule],
   styleUrls: ['./recent-activity.component.scss']
 })
-export class RecentActivityComponent {
-  @Input() plays: any[] = [];
-  view: [number, number] = [800, 300];
-  
+export class RecentActivityComponent implements OnChanges { 
+
+  @Input() recentPlaysData: any[] = []; 
+
+
+
   // Opciones del gráfico
   showXAxis = true;
   showYAxis = true;
-  gradient = false;
-  showLegend = false;
-  autoScale = true;
-  timeline = true;
+  gradient = false; 
+  showLegend = true; 
+  showXAxisLabel = true;
+  showYAxisLabel = true;
+  showLabels = true;
+  timeline = true; 
+  xAxisLabel = 'Hora del día'; 
+  yAxisLabel = 'Reproducciones';
+
   colorScheme: Color = {
-  name: 'spotify',
-  selectable: true,
-  group: ScaleType.Ordinal,
-  domain: ['#1DB954', '#191414', '#535353']
-};
+    name: 'multiLineActivity',
+    selectable: true,
+    group: ScaleType.Ordinal,
+    domain: ['#1DB954','#7DCF99', '	#232723', '	#e1ece3', '#457e59', '	#a8b2a8']
+  };
 
-  formatData(): any[] {
-    const playsByDate = this.plays.reduce((acc, play) => {
-      const date = new Date(play.played_at).toLocaleDateString();
-      acc[date] = (acc[date] || 0) + 1;
-      return acc;
-    }, {});
+  constructor() { } 
+  
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['recentPlaysData'] && changes['recentPlaysData'].currentValue) {
+      this.recentPlaysData = [...changes['recentPlaysData'].currentValue]; 
+    }
+  }
 
-    return [{
-      name: 'Reproducciones',
-      series: Object.keys(playsByDate).map(date => ({
-        name: date,
-        value: playsByDate[date]
-      }))
-    }];
+  onSelect(event: any): void {
+    console.log('Item seleccionado:', event);
   }
 }

@@ -1,28 +1,10 @@
-<mat-tab-group>
-  <mat-tab label="First"> 
-    <div class="div-login">
+<div class="div-login">
+  <p>¡Conecta con Spotify!</p>
+  <span class="description">Accede a tus datos para trabajar con ellos</span>
 
-    <mat-card class="login-card">
-      <mat-card-header>
-        <img src="" alt="">
-        <mat-card-title>¡Conecta con Spotify!</mat-card-title>
-        <mat-card-subtitle>Accede a tus datos para trabajar con ellos</mat-card-subtitle>
-      </mat-card-header>
-      
-      <!-- <mat-card-content>
-        <p>To view your Spotify playlists, please connect your Spotify account.</p>
-      </mat-card-content> -->
-      
-      <mat-card-actions>
-        <button class="btn-primary" mat-raised-button color="primary" (click)="loginWithSpotify()">
-          <span>Conectar</span>
-          <mat-icon fontIcon="login"></mat-icon>
-        </button>
-      </mat-card-actions>
-    </mat-card>
-  </div>
-</mat-tab>
-  <mat-tab label="Second" disabled> Content 2 </mat-tab>
-  <mat-tab label="Third" disabled> Content 3 </mat-tab>
-</mat-tab-group>
+  <button class="btn btn-primary" (click)="loginWithSpotify()">
+    <span>Iniciar sesion</span>
+    <mat-icon fontIcon="login"></mat-icon>
+  </button>
 
+</div>

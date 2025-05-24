@@ -1,7 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, Inject, inject, PLATFORM_ID } from '@angular/core';
 import { SpotifyAuthService } from '../spotify-auth.service';
 import { ActivatedRoute, Router } from '@angular/router';
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
@@ -13,7 +13,7 @@ import {MatTabsModule} from '@angular/material/tabs';
   imports: [
     CommonModule,
     MatButtonModule,
-    MatCardModule, // Añade esto a tus imports
+    MatCardModule, 
     MatIconModule,
     MatTabsModule
   ],
@@ -21,27 +21,19 @@ import {MatTabsModule} from '@angular/material/tabs';
   styleUrls: ['./spotify-login.component.scss'],
 })
 export class SpotifyLoginComponent {
-  private authService = inject(SpotifyAuthService);
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  
-  constructor(private spotifyAuthService: SpotifyAuthService) {}
-
-  
-  /**
-   * Verifica si hay un código de autorización en la URL
-  //  */
-  // private checkForAuthCode(): void {
-  //   this.route.queryParams.subscribe(params => {
-  //     const code = params['code'];
-  //     if (code) {
-  //       this.handleAuthCode(code);
-  //     }
-  //   });
-  // }
+  private isBrowser: boolean;
+  constructor(private spotifyAuthService: SpotifyAuthService,@Inject(PLATFORM_ID) private platformId: Object) {
+    this.isBrowser = isPlatformBrowser(this.platformId); 
+  }
 
   
   loginWithSpotify() {
     this.spotifyAuthService.initiateAuthFlow();
+  }
+
+   ngOnInit(): void {
+    if (this.isBrowser) { 
+      document.body.classList.remove('no-background');
+    } 
   }
 }

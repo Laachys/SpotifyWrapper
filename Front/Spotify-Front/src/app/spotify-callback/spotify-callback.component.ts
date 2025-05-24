@@ -39,7 +39,7 @@ export class SpotifyCallbackComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private spotifyAuthService: SpotifyAuthService,
     private router: Router
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.handleSpotifyCallback();
@@ -57,7 +57,7 @@ export class SpotifyCallbackComponent implements OnInit, OnDestroy {
       next: (params) => {
         const code = params['code'];
         const error = params['error'];
-        
+
         if (error) {
           this.handleAuthError(params['error_description'] || 'Error desconocido de Spotify');
           return;
@@ -77,7 +77,6 @@ export class SpotifyCallbackComponent implements OnInit, OnDestroy {
   private processAuthorizationCode(code: string): void {
     this.spotifyAuthService.exchangeCodeForToken(code).pipe(
       tap((response) => {
-        this.spotifyAuthService.updateTokens(response);
         this.redirectToPlaylists();
       }),
       catchError((error: HttpErrorResponse) => {
@@ -85,7 +84,16 @@ export class SpotifyCallbackComponent implements OnInit, OnDestroy {
         return throwError(() => error);
       }),
       takeUntil(this.destroy$)
-    ).subscribe();
+    ).subscribe(
+      {
+        next: () => {
+          console.log('CallbackComponent: Suscripción a exchangeCodeForToken completada exitosamente.');
+        },
+        error: (err) => {
+          console.error('CallbackComponent: Suscripción a exchangeCodeForToken terminó con error:', err); 
+        }
+      }
+    );
   }
 
   private redirectToPlaylists(): void {
@@ -97,8 +105,6 @@ export class SpotifyCallbackComponent implements OnInit, OnDestroy {
   private handleAuthError(message: string): void {
     this.error = message;
     this.loading = false;
-    console.error('Error en autenticación:', message);
-    // Opcional: Limpiar estado de autenticación
     this.spotifyAuthService.clearTokens();
   }
 

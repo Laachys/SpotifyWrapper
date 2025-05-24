@@ -24,6 +24,9 @@
       ],
       "@env/*": [
         "src/environments/*"
+      ],
+       "~bootstrap/*": [
+        "node_modules/bootstrap/*"
       ]
     },
   },

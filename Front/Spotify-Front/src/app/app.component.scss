@@ -1,0 +1,14 @@
+@import "../styles/base.scss";
+.example-spacer {
+  flex: 1 1 auto;
+}
+
+.mat-toolbar{
+    background-color: $primary;
+    font-family:"Figtree";
+    font-weight: 800;
+    .logo{
+        max-width: 5rem;
+    }
+
+}

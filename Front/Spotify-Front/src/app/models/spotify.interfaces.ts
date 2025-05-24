@@ -1,31 +1,8 @@
-// spotify.model.ts
+
 export interface SpotifyImage {
   url: string;
   height?: number;
   width?: number;
-}
-
-export interface SpotifyArtist {
-  id?: string;
-  name: string;
-  // Puedes añadir más propiedades según necesites
-}
-
-export interface SpotifyAlbum {
-  id: string;
-  name: string;
-  images: SpotifyImage[];
-  // Otras propiedades del álbum
-}
-
-export interface SpotifyTrack {
-  id: string;
-  name: string;
-  duration_ms: number;
-  artists: SpotifyArtist[];
-  album: SpotifyAlbum;
-  preview_url: string | null;
-  // Otras propiedades de la canción
 }
 
 export interface SpotifyPlaylistTrack {
@@ -99,15 +76,6 @@ export interface FormattedPlaylist {
   tracks: SpotifyPagination<FormattedTrack>;
 }
 
-export interface SpotifyUserPlaylistsResponse {
-  href: string;
-  items: SpotifyPlaylist[];
-  limit: number;
-  next: string | null;
-  offset: number;
-  previous: string | null;
-  total: number;
-}
 
 export interface SpotifyPlaylistOwner {
   display_name: string;
@@ -123,28 +91,6 @@ export interface SpotifyExternalUrls {
   spotify: string;
 }
 
-export interface SpotifyTrackObject {
-  album: SpotifyAlbum;
-  artists: SpotifyArtist[];
-  available_markets?: string[];
-  disc_number: number;
-  duration_ms: number;
-  explicit: boolean;
-  external_ids: {
-    isrc: string;
-  };
-  external_urls: SpotifyExternalUrls;
-  href: string;
-  id: string;
-  is_local: boolean;
-  name: string;
-  popularity: number;
-  preview_url: string | null;
-  track_number: number;
-  type: 'track';
-  uri: string;
-}
-
 export interface SpotifyContext {
   type: 'artist' | 'playlist' | 'album';
   href: string;
@@ -152,7 +98,6 @@ export interface SpotifyContext {
   uri: string;
 }
 
-// Tipos para respuestas específicas
 export interface SpotifyPlaylistResponse extends SpotifyPlaylist {}
 export interface SpotifyPlaylistTracksResponse {
   items: SpotifyPlaylistTrack[];

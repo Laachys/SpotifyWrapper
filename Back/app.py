@@ -23,10 +23,9 @@ SPOTIPY_API_BASE_URL = os.getenv('SPOTIPY_API_BASE_URL')
 
 
 # Conexión a MongoDB (local o Atlas)
-MONGODB_URI = os.getenv('SPOTIFYIAYBIGDATA', 'mongodb://localhost:27017/')  # Usa variables de entorno
+MONGODB_URI = os.getenv('SPOTIFYIAYBIGDATA', 'mongodb://localhost:27017/')  
 client = MongoClient(MONGODB_URI)
-db = client["SPOTIFYIAYBIGDATA"]  # Nombre de la base de datos
-# Verifica la conexión
+db = client["SPOTIFYIAYBIGDATA"]  
 try:
     client.admin.command('ping')
     print("✅ Conectado a MongoDB")
@@ -36,7 +35,7 @@ except ConnectionFailure:
 
 @app.route('/login')
 def login():
-    scope = 'user-library-read playlist-read-private user-read-private user-read-email user-top-read'
+    scope = 'user-library-read playlist-read-private user-read-private user-read-email user-top-read user-read-recently-played'
     auth_url = (
         f'https://accounts.spotify.com/authorize?'
         f'response_type=code&'
@@ -50,9 +49,7 @@ def login():
 @app.route('/callback')
 def callback():
     code = request.args.get('code')
-    # print(f"Código recibido: {code}")
     if not code:
-        print("Error: Código no proporcionado")
         return jsonify({'error': 'Código no proporcionado'}), 400
 
     token_data = {
@@ -62,31 +59,21 @@ def callback():
         'client_id': SPOTIPY_CLIENT_ID,
         'client_secret': SPOTIPY_CLIENT_SECRET
     }
-    # print(f"Datos de la petición de token: {token_data}")
 
     response = requests.post(SPOTIPY_TOKEN_URL, data=token_data)
-    # print(f"Estado de la respuesta de Spotify: {response.status_code}")
-    # print(f"Contenido de la respuesta de Spotify: {response.content}") # Imprime el contenido sin intentar parsear JSON aún
     if response.status_code != 200:
         return jsonify({'error': 'Error al obtener token'}), 400
 
     try:
         token_info = response.json()
-        # print(f"Información del token recibida: {token_info}")
 
-        # 2. Obtener datos del usuario
         headers = {'Authorization': f'Bearer {token_info["access_token"]}'}
         user_response = requests.get('https://api.spotify.com/v1/me', headers=headers)
         user_data = user_response.json()
         if user_response.status_code != 200:
             print(f"Error al obtener datos de usuario: {user_response.text}")
             return jsonify({'error': 'No se pudieron obtener datos del usuario'}), 400
-        # if user_response.status_code == 200:
-        #     print(f"usuario: {user_response.text}")
-        #     return jsonify({'error': 'No se pudieron obtener datos del usuario'}), 400
-        # user_data = user_response.json()
-        
-        # 3. Guardar en MongoDB
+       
         user_doc = {
             'spotify_id': user_data['id'],
             'display_name': user_data.get('display_name', ''),
@@ -113,7 +100,6 @@ def callback():
             'display_name': user_data.get('display_name', user_data.get('id', 'Usuario'))
         })
     except Exception as e:
-        # print(f"Error al parsear JSON de Spotify: {e}")
         return jsonify({'error': f'Error al parsear JSON de Spotify: {e}'}), 500    
     pass
 
@@ -155,19 +141,16 @@ def get_playlist_tracks_route(playlist_id):
     if auth_header and auth_header.startswith('Bearer '):
         access_token = auth_header.split(' ')[1]
         try:
-            # Obtener datos de la playlist completa
             playlist_data = get_spotify_data(access_token, f'/playlists/{playlist_id}')
             
             if not playlist_data:
                 return jsonify({'error': 'No se pudo obtener la playlist'}), 404
             
-            # 2. Verificar si hay tracks disponibles
             if 'tracks' not in playlist_data or 'items' not in playlist_data['tracks']:
                 return jsonify({'error': 'La playlist no contiene tracks'}), 404
 
-            # 3. Procesar y guardar tracks
             saved_tracks = []
-            for item in playlist_data['tracks']['items']:  # Accedemos a través de playlist_data['tracks']
+            for item in playlist_data['tracks']['items']:
                 track = item.get('track')
                 if not track:
                     continue
@@ -189,7 +172,6 @@ def get_playlist_tracks_route(playlist_id):
                     'added_at': datetime.utcnow()
                 }
                 
-                # Insertar o actualizar el track
                 db.tracks.update_one(
                     {'spotify_id': track['id']},
                     {'$set': track_doc},
@@ -197,7 +179,6 @@ def get_playlist_tracks_route(playlist_id):
                 )
                 saved_tracks.append(track['id'])
             
-            # 4. Devolver respuesta (usando la estructura original de playlist_data)
             return jsonify({
                 'id': playlist_data['id'],
                 'name': playlist_data['name'],
@@ -279,32 +260,6 @@ def get_playlists_stats():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/dashboard/genres', methods=['GET'])
-def get_genres_stats():
-    try:
-        pipeline = [
-            {'$unwind': '$tracks'},
-            {'$lookup': {
-                'from': 'tracks',
-                'localField': 'tracks.id',
-                'foreignField': 'spotify_id',
-                'as': 'track_data'
-            }},
-            {'$unwind': '$track_data'},
-            {'$group': {
-                '_id': '$track_data.genre',  # Asume que guardaste el género en cada track
-                'count': {'$sum': 1}
-            }},
-            {'$sort': {'count': -1}},
-            {'$limit': 5}
-        ]
-        
-        top_genres = list(db.playlists.aggregate(pipeline))
-        return jsonify(top_genres)
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/playlists/<playlist_id>/stats', methods=['GET'])
 def get_playlist_stats(playlist_id):
     try:
@@ -378,7 +333,7 @@ def get_profile():
                 'spotify_id': spotify_data['id'],
                 'display_name': spotify_data.get('display_name', ''),
                 'images': spotify_data.get('images', []),
-                'followers': spotify_data.get('followers', {}).get('total', 0),
+                'followers': spotify_data.get('followers',[]),
                 'country': spotify_data.get('country', ''),
                 'product': spotify_data['product'],
                 'updated_at': datetime.now(),
@@ -491,5 +446,147 @@ def get_top_tracks():
 
     return jsonify(tracks)
 
+@app.route('/user/top/genres_from_tracks', methods=['GET'])
+def get_genres_from_top_tracks():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Token de acceso no proporcionado'}), 401
+    access_token = auth_header.split(' ')[1]
+
+    # Puedes ajustar el límite de tracks para un análisis más profundo.
+    # Un límite de 50 o 100 puede ser una buena opción.
+    limit_tracks = request.args.get('limit_tracks', default=100, type=int) 
+    time_range = request.args.get('time_range', default='medium_term', type=str)
+
+    # --- Parte 1: Obtener los Top Tracks del usuario ---
+    # Usar la caché para los top tracks (similar a como ya lo haces)
+    top_tracks_cache_key = f"top_tracks_{time_range}_{limit_tracks}"
+    cached_tracks = db.cache.find_one({'key': top_tracks_cache_key})
+    current_time_timestamp = datetime.now().timestamp()
+
+    tracks_data = None
+    if cached_tracks and cached_tracks.get('expires_at', 0) > current_time_timestamp:
+        print(f"DEBUG: Recuperando Top Tracks de la caché (key: {top_tracks_cache_key})")
+        tracks_data = cached_tracks['data']
+    else:
+        print(f"DEBUG: Obteniendo Top Tracks de Spotify (limit={limit_tracks}, time_range={time_range})")
+        try:
+            # Llama a la API de Spotify para obtener los top tracks
+            tracks_data = get_spotify_data(
+                access_token,
+                '/me/top/tracks',
+                params={'limit': limit_tracks, 'time_range': time_range}
+            )
+            # Almacena los top tracks en la caché
+            db.cache.update_one(
+                {'key': top_tracks_cache_key},
+                {'$set': {
+                    'data': tracks_data,
+                    'expires_at': datetime.now().timestamp() + 3600 # Caché por 1 hora
+                }},
+                upsert=True
+            )
+        except requests.exceptions.HTTPError as e:
+            print(f"Error calling Spotify API for top tracks: {e.response.text}")
+            return jsonify({'error': 'Error al obtener canciones principales de Spotify', 'details': e.response.text}), e.response.status_code
+        except Exception as e:
+            print(f"Internal server error fetching top tracks: {e}")
+            return jsonify({'error': 'Error inesperado al obtener canciones principales', 'details': str(e)}), 500
+    
+    if not tracks_data or not tracks_data.get('items'):
+        print("DEBUG: No se recibieron Top Tracks o están vacíos.")
+        return jsonify({'genre_data': []})
+
+    # --- Parte 2: Extraer artistas únicos de los Top Tracks ---
+    genre_counts = {}
+    artist_ids_to_fetch = set() # Usar un set para almacenar ID's únicos de artistas
+
+    for item in tracks_data['items']:
+        # La respuesta de '/me/top/tracks' tiene los artistas directamente en el nivel superior del 'item'
+        # No están anidados bajo una propiedad 'track' como en las playlists
+        if 'artists' in item:
+            for artist in item['artists']: 
+                artist_ids_to_fetch.add(artist['id'])
+
+    print(f"DEBUG: Artistas únicos encontrados en Top Tracks: {len(artist_ids_to_fetch)}")
+
+    # --- Parte 3: Obtener géneros para cada artista único ---
+    for artist_id in list(artist_ids_to_fetch): # Convertir a lista para iterar
+        artist_cache_key = f"artist_details_{artist_id}"
+        cached_artist = db.cache.find_one({'key': artist_cache_key})
+        
+        artist_details = None
+        if cached_artist and cached_artist.get('expires_at', 0) > current_time_timestamp:
+            # print(f"DEBUG: Recuperando detalles del artista {artist_id} de la caché.")
+            artist_details = cached_artist['data']
+        else:
+            # print(f"DEBUG: Obteniendo detalles del artista {artist_id} de Spotify.")
+            try:
+                # Llama a la API de Spotify para obtener detalles del artista
+                artist_details = get_spotify_data(
+                    access_token,
+                    f'/artists/{artist_id}'
+                )
+                # Almacena los detalles del artista en la caché
+                db.cache.update_one(
+                    {'key': artist_cache_key},
+                    {'$set': {
+                        'data': artist_details,
+                        'expires_at': datetime.now().timestamp() + (7 * 24 * 3600) # Cache artist details por 7 días
+                    }},
+                    upsert=True
+                )
+            except requests.exceptions.HTTPError as e:
+                print(f"Error fetching artist {artist_id} details: {e.response.text}")
+                # Continúa con el siguiente artista si hay un error
+                continue
+            except Exception as e:
+                print(f"Unexpected error fetching artist {artist_id} details: {e}")
+                continue
+
+        # --- Parte 4: Consolidar y contar géneros ---
+        if artist_details and artist_details.get('genres'):
+            for genre in artist_details['genres']:
+                # Normaliza el género (por ejemplo, a minúsculas) para evitar duplicados como "Pop" y "pop"
+                normalized_genre = genre.lower() 
+                genre_counts[normalized_genre] = genre_counts.get(normalized_genre, 0) + 1
+
+    print(f"DEBUG: Conteo final de géneros: {genre_counts}")
+
+    # --- Parte 5: Formatear para ngx-charts ---
+    # `ngx-charts` espera un array de objetos { name: 'Género', value: count }
+    formatted_genre_data = [{'name': g.title(), 'value': c} for g, c in genre_counts.items()] # .title() capitaliza la primera letra
+
+    # Opcional: Ordenar los géneros por conteo descendente
+    formatted_genre_data.sort(key=lambda x: x['value'], reverse=True)
+    # limit_genres = request.args.get('limit_genres', default=10, type=int) # Nuevo parámetro opcional
+    formatted_genre_data = formatted_genre_data[:15]
+
+    return jsonify(formatted_genre_data)
+
+@app.route('/user/recent', methods=['GET'])
+def get_user_recent_plays():
+    access_token = request.headers.get('Authorization')
+    if not access_token:
+        return jsonify({"error": "Authorization token is missing"}), 401
+
+    # Remove "Bearer " prefix
+    spotify_access_token = access_token.split(" ")[1]
+
+    limit = request.args.get('limit', default=50, type=int) # Get limit from query params
+
+    # Implement your Spotify API call here
+    # Example using requests (you might use spotipy or similar)
+    headers = {
+        'Authorization': f'Bearer {spotify_access_token}'
+    }
+    spotify_url = f'https://api.spotify.com/v1/me/player/recently-played?limit={limit}'
+    response = requests.get(spotify_url, headers=headers)
+
+    if response.status_code == 200:
+        return jsonify(response.json())
+    else:
+        return jsonify({"error": "Failed to fetch recent plays from Spotify", "details": response.json()}), response.status_code
+    
 if __name__ == '__main__':
     app.run(debug=True)

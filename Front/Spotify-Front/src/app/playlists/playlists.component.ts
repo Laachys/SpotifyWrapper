@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, ElementRef, Input, OnInit, QueryList, ViewChild, ViewChildren, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SpotifyDataService } from '../spotify-data.service';
 import { MatCardModule } from '@angular/material/card';
@@ -8,18 +8,19 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import {MatToolbarModule} from '@angular/material/toolbar';
 import { InfiniteScrollModule } from 'ngx-infinite-scroll';
+
 import { 
   SpotifyPlaylist, 
-  SpotifyPlaylistTrack,
   SpotifyPagination,
   FormattedTrack,
   FormattedPlaylist
 } from '../models/spotify.interfaces';
 import { finalize, Subject, Subscription, takeUntil } from 'rxjs';
 import { DashboardComponent } from '@app/dashboard/dashboard.component';
-import { MatTabsModule } from '@angular/material/tabs';
+import { MatTabGroup, MatTabsModule } from '@angular/material/tabs';
 import { SpotifyAuthService } from '@app/spotify-auth.service';
-
+import { ProfileCardComponent } from '@app/dashboard/components/profile-card/profile-card.component';
+declare var bootstrap: any;
 @Component({
   selector: 'app-playlists',
   standalone: true,
@@ -30,16 +31,18 @@ import { SpotifyAuthService } from '@app/spotify-auth.service';
     MatButtonModule,
     MatProgressSpinnerModule,
     MatIconModule,
-    InfiniteScrollModule,
     DashboardComponent,
-    MatTabsModule
+    MatTabsModule,
+    ProfileCardComponent,
+    MatToolbarModule ,
+    InfiniteScrollModule
+    
   ],
   templateUrl: './playlists.component.html',
   styleUrls: ['./playlists.component.scss']
 })
 export class PlaylistsComponent implements OnInit {
   private spotifyService = inject(SpotifyDataService);
-  private spotifyAuthService = inject(SpotifyAuthService);
   private destroy$ = new Subject<void>();
   
   playlists: SpotifyPlaylist[] = [];
@@ -54,6 +57,13 @@ export class PlaylistsComponent implements OnInit {
   showStats = false;
   userName: Subscription | undefined;
   userDisplayName: string = 'Invitado';
+  userProfile: any;
+  selectedPlaylistPrueba: SpotifyPlaylist | null = null;
+   @Input() user: any;
+   
+   
+  @ViewChild('playlistCarousel') playlistCarouselRef!: ElementRef;
+  @ViewChild(MatTabGroup) tabGroup!: MatTabGroup; 
 
   constructor(public authService: SpotifyAuthService) {
    
@@ -65,19 +75,65 @@ export class PlaylistsComponent implements OnInit {
       if (user && user.display_name) {
         this.userDisplayName = user.display_name;
       } else {
-        this.userDisplayName = 'Invitado'; // Si no hay usuario o nombre
+        this.userDisplayName = 'Invitado';
       }
     });
   }
 
-  loadPlaylists(): void {
+
+  ngAfterViewInit(): void {
+    this.tabGroup.selectedTabChange.pipe(
+      takeUntil(this.destroy$) 
+    ).subscribe(() => {
+      if (this.tabGroup.selectedIndex === 0) {
+        this.initializeCarousel();
+      }
+    });
+
+    if (this.tabGroup.selectedIndex === 0 && this.playlists.length > 0) {
+      this.initializeCarousel();
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    if (this.userName) {
+      this.userName.unsubscribe();
+    }
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.currentAudio = null;
+    }
+  }
+
+  initializeCarousel(): void {
+    setTimeout(() => {
+      const carouselElement = this.playlistCarouselRef?.nativeElement;
+      if (carouselElement && this.playlists.length > 0) {
+        new bootstrap.Carousel(carouselElement, {
+          interval: 5000, 
+          wrap: true 
+        });
+      } else {
+        console.warn('No se pudo inicializar el carrusel: elemento no encontrado o no hay playlists.');
+      }
+    }, 0);
+  }
+  
+  async loadPlaylists(): Promise<void> {
     this.isLoading = true;
     this.spotifyService.getUserPlaylists().subscribe({
       next: (data: SpotifyPagination<SpotifyPlaylist>) => {
         this.playlists = data.items;
-        console.log(this.playlists)
         this.isLoading = false;
         this.error = null;
+        if (this.playlists.length > 0) {
+          this.selectedPlaylistPrueba = this.playlists[0]; 
+        }
+        if (this.tabGroup.selectedIndex === 0) {
+          this.initializeCarousel();
+        }
       },
       error: (error) => {
         this.error = this.handlePlaylistError(error);
@@ -85,6 +141,12 @@ export class PlaylistsComponent implements OnInit {
         console.error('Error loading playlists:', error);
       }
     });
+    this.userProfile = await this.spotifyService.getUserProfile().toPromise();
+   
+
+     if (this.playlists.length > 0) {
+      this.selectedPlaylistPrueba = this.playlists[0];
+    }
   }
 
   toggleStats() {
@@ -115,9 +177,8 @@ export class PlaylistsComponent implements OnInit {
     });
   }
 
+  
   private formatPlaylistResponse(response: SpotifyPlaylist): FormattedPlaylist {
-    // Primero mapeamos los tracks existentes
-    // Verificación adicional de seguridad
   if (!response || !response.tracks || !response.tracks.items) {
       console.error('Respuesta inválida:', response);
       return {
@@ -138,7 +199,7 @@ export class PlaylistsComponent implements OnInit {
     }
 
     const formattedTracks = response.tracks.items
-      .filter(item => item.track) // Filtra items sin track
+      .filter(item => item.track)
       .map((item, index) => ({
         position: index + 1,
         id: item.track.id,
@@ -198,7 +259,6 @@ export class PlaylistsComponent implements OnInit {
   }
   
 playTrack(track: FormattedTrack): void {
-  // Implementa la lógica para reproducir la canción completa
   console.log('Reproduciendo canción:', track.name);
 }
 
@@ -213,7 +273,7 @@ togglePreview(track: FormattedTrack): void {
 }
 
 playPreview(track: FormattedTrack): void {
-  this.stopPreview(); // Detener cualquier reproducción previa
+  this.stopPreview();
   
   if (track.previewUrl) {
     this.currentAudio = new Audio(track.previewUrl);
@@ -226,42 +286,7 @@ isPlaying(track: FormattedTrack): boolean {
   return this.currentlyPlayingTrackId === track.id;
 }
 
-// loadMoreTracks(): void {
-//     if (this.loadingMore || !this.selectedPlaylist || 
-//       !this.selectedPlaylist.tracks.next || 
-//       this.selectedPlaylist.tracks.items.length >= this.selectedPlaylist.tracks.total) {
-//     return;
-//   }
-
- 
-//     this.loadingMore = true;
-//     const offset = this.selectedPlaylist.tracks.items.length;
-
-//     this.spotifyService.getPlaylistTracks(this.selectedPlaylist.id, 50, offset)
-//     .pipe(
-//       finalize(() => this.loadingMore = false)
-//     )
-//     .subscribe({
-//         next: (tracks) => {
-//           if (this.selectedPlaylist) {
-//             this.selectedPlaylist.tracks = {
-//               items: [...this.selectedPlaylist.tracks.items, ...tracks.items],
-//               total: tracks.total,
-//               limit: tracks.limit,
-//               offset: tracks.offset,
-//               next: tracks.next
-//             };
-//           }
-//         },
-//       error: (err) => {
-//         this.handleError(err);
-//         this.loadingMore = false;
-//       }
-//     });
-// }
-
 loadMoreTracks(): void {
-  // Verificar si ya está cargando o no hay más tracks
   if (this.loadingMore || this.allTracksLoaded || !this.selectedPlaylist) {
     return;
   }
@@ -271,7 +296,7 @@ loadMoreTracks(): void {
 
   this.spotifyService.getPlaylistTracks(
     this.selectedPlaylist.id, 
-    50, // Puedes ajustar este número
+    50,
     currentOffset
   ).subscribe({
     next: (tracks) => {
@@ -339,15 +364,5 @@ createChartOptions() {
       }
     ]
   };
-}
-
-private handleError(error: any): void {
-  console.error('Error:', error);
-  this.error = error.message || 'Ocurrió un error';
-  
-  if (error.status === 401) {
-    this.error = 'Tu sesión ha expirado. Por favor, vuelve a conectarte.';
-    // Aquí podrías redirigir al login
-  }
 }
 }

@@ -1,53 +1,118 @@
-
-.cards{
-    display: grid;
-    grid-gap: 10px;
-    grid-template-columns: repeat(auto-fill, 18rem);
-    justify-content: center;
-    
+@import "../../styles/base.scss";
+.tabs{
+  padding: 1rem 5rem;
+  border: 2px solid $primary-green;
+  border-radius: 16px;
 }
 
-.card{
-    &-body{
-        padding: 2rem;
-    }
-    &-img-top{
-        height: 17rem;
-        object-fit: cover;
-    }
+.info-text{
+  font-size: 24px;
+  font-family:"Figtree", "Helvetica Neue", sans-serif; 
+  margin: 1.5rem 0 1rem 0;
+  text-transform: uppercase;
 }
 
-.playlists{
-    &-list{
-        margin-bottom: 2rem;
-    }
+.carousel{
+    max-width: 25rem;
+    margin: auto;
+   cursor: pointer;
+
+   img{
+    height: 25rem;
+    object-fit: cover;
+   }
+
 }
 
-.tracks-container {
-    height: 60vh; /* Altura fija para el scroll */
-    overflow-y: auto;
-    position: relative;
-  }
-  
-  .loading-indicator {
+.playlist-details{
+  margin-top: 2rem;
+  &-header{
     display: flex;
-    justify-content: center;
-    padding: 20px;
+    flex-wrap: wrap;
+    gap: 2rem;
+    img{
+      border-radius: 16px;
+      max-width:10rem;
+      object-fit: contain;
+
+    }
   }
-  
-  .end-message {
-    text-align: center;
-    padding: 20px;
-    color: #666;
-    font-style: italic;
+  &-info{
+    font-weight: 800;
+    font-family:"Figtree", "Helvetica Neue", sans-serif; 
+
+    text-transform: uppercase;
+
+    & .more-info{
+      display: flex;
+      justify-content: space-evenly;
+      gap:1.5rem;
+    }
+
+    &-description{
+      font-size: 18px;
+      span{
+        font-size: 16px;
+        font-weight: 600;
+      }
+    }
+
+    &-badge{
+      font-size: 18px;
+      span{
+        font-size: 24px;
+      }
+    }
+
+
   }
-  
-  /* Estilo para la barra de scroll */
-  .tracks-container::-webkit-scrollbar {
-    width: 8px;
+
+  &-tracks{
+    max-width: calc(100% - 1rem);
+    width: 100%;
+    max-height: 30rem;
+    overflow: auto;
+
+    .tracks-container{
+      display: grid;
+      grid-template-columns: repeat(2, auto);
+      gap: 3rem;
+    }
+    .track-item{
+      padding:1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      gap: 1rem;
+      border: 1px solid $primary-ligth-green;
+    border-radius: 16px;
+
+
+      .track-important-info{
+        // width: 75%;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        img{
+          width: 5rem;
+        }
+      }
+      .track-name{
+        font-size: 24px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+      .track-text{
+       width: auto;
+       p{
+        margin-bottom: 0;
+        font-weight: 500;
+        text-transform: uppercase;
+        span{
+          font-weight: 600;
+        }
+       }
+      }
+    }
   }
-  
-  .tracks-container::-webkit-scrollbar-thumb {
-    background-color: #1db954;
-    border-radius: 4px;
-  }
+}

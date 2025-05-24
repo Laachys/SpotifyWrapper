@@ -3,7 +3,7 @@ import { ScaleType } from '@swimlane/ngx-charts';
 export const SPOTIFY_COLOR_SCHEME = {
   name: 'spotify',
   selectable: true,
-  group: ScaleType.Ordinal,  // Esto reemplaza el string 'ordinal'
+  group: ScaleType.Ordinal,
   domain: [
     '#1DB954', // Verde Spotify
     '#191414', // Negro Spotify

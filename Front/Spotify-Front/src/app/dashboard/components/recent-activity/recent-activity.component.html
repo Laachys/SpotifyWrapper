@@ -1,14 +1,21 @@
-<div class="activity-container">
-  <h3>Actividad Reciente</h3>
+<div class="recent-activity-chart-container">
   <ngx-charts-line-chart
-    [view]="view"
+    *ngIf="recentPlaysData && recentPlaysData.length > 0 && recentPlaysData[0]?.series?.length > 0"
+    [results]="recentPlaysData"
     [scheme]="colorScheme"
-    [results]="formatData()"
     [gradient]="gradient"
     [xAxis]="showXAxis"
     [yAxis]="showYAxis"
     [legend]="showLegend"
-    [autoScale]="autoScale"
-    [timeline]="timeline">
+    [showXAxisLabel]="showXAxisLabel"
+    [showYAxisLabel]="showYAxisLabel"
+    [xAxisLabel]="xAxisLabel"
+    [yAxisLabel]="yAxisLabel"
+    [timeline]="timeline"
+    (select)="onSelect($event)">
   </ngx-charts-line-chart>
+
+  <div *ngIf="!recentPlaysData || recentPlaysData.length === 0 || (recentPlaysData[0] && recentPlaysData[0].series && recentPlaysData[0].series.length === 0)" class="no-data-message">
+    Cargando actividad reciente o no hay datos disponibles.
+  </div>
 </div>

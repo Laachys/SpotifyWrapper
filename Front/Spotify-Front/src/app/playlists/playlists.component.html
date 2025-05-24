@@ -1,139 +1,135 @@
-<mat-tab-group>
-  <mat-tab label="PLAYLISTS"> 
-    <div class="playlists-container">
-      <h2>Playlists de {{ this.userDisplayName }}</h2>
-      
-      @if (isLoading && !playlists.length) {
+<app-profile-card [user]="userProfile"></app-profile-card>
+<div class="tabs">
+  <mat-tab-group>
+    <mat-tab class="mat-tab" label="PLAYLISTS">
+      <div class="playlists-container">
+        @if (isLoading && !playlists.length) {
         <mat-spinner diameter="40"></mat-spinner>
-      }
-    
-      @if (error) {
+        }
+
+        @if (error) {
         <div class="error-message">
           <mat-icon>error</mat-icon>
           <span>{{ error }}</span>
           <button mat-button color="primary" (click)="loadPlaylists()">Reintentar</button>
         </div>
-      }
-    
-      <div class="playlists-grid">
-        <span class="info-text">Haz click en cualquier playlist para obtener más información</span>
-        
-        <!-- Lista de playlists -->
-        <div class="playlists-list">
-          <div class="cards">
-            @for (playlist of playlists; track playlist.id) {
-              <mat-card class="card" (click)="showPlaylistDetails(playlist.id)" 
-                       [class.selected]="selectedPlaylist?.id === playlist.id">
-                <img mat-card-image [src]="playlist.images[0]?.url" alt="{{ playlist.name }}">
-                <mat-card-content>
-                  <h3 class="card-title">{{ playlist.name }}</h3>
-                  <p class="card-text">{{ playlist.tracks.total }} canciones</p>
-                </mat-card-content>
-              </mat-card>
-            }
-          </div>
-        </div>
-        
-        <!-- Detalles de la playlist seleccionada -->
-        @if (selectedPlaylist) {
-          <div class="playlist-details" id="playlist-details">
-            <mat-card class="playlist-header-card">
-              <div class="playlist-header">
-                <img [src]="selectedPlaylist.images[0]?.url || 'assets/default-playlist.png'" 
-                     alt="Playlist cover" 
-                     class="playlist-cover">
-                <div class="playlist-info">
-                  <span class="playlist-badge">PLAYLIST</span>
-                  <h1>{{ selectedPlaylist.name }}</h1>
-                  @if (selectedPlaylist.description) {
-                    <p class="playlist-description">{{ selectedPlaylist.description }}</p>
-                  }
-                  <div class="playlist-stats">
-                    <span class="owner">{{ selectedPlaylist.owner.display_name }}</span>
-                    <span class="separator">•</span>
-                    <span class="tracks-count">{{ selectedPlaylist.tracks.total }} canciones</span>
-                  </div>
-                </div>
+        }
+
+        <div class="playlists-grid">
+          <p class="info-text">Haz click en cualquier playlist para obtener el listado de canciones: </p>
+
+          <div id="carouselExampleControls" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-indicators">
+              @for (playlist of playlists; track playlist.id; let i = $index) {
+              <button type="button" [attr.data-bs-target]="'#playlistCarousel'" [attr.data-bs-slide-to]="i"
+                [class.active]="i === 0" [attr.aria-current]="i === 0 ? 'true' : null"
+                [attr.aria-label]="'Slide ' + (i + 1)">
+              </button>
+              }
+            </div>
+            <div class="carousel-inner ">
+              @for (playlist of playlists; track playlist.id; let i = $index) {
+              <div class="card carousel-item" [class.active]="i === 0" (click)="showPlaylistDetails(playlist.id)"
+                [class.selected]="selectedPlaylist?.id === playlist.id">
+                <img [src]="playlist.images[0]?.url" alt="{{ playlist.name }}" class="d-block w-100 ">
               </div>
-            </mat-card>
-    
-            <!-- Lista de canciones con scroll infinito -->
-            <mat-card class="tracks-card">
-              <div class="tracks-container" infiniteScroll 
-              (scrolled)="loadMoreTracks()" 
-              [scrollWindow]="false"
-              [infiniteScrollDistance]="2"
-              [infiniteScrollThrottle]="300"
-              [infiniteScrollDisabled]="loadingMore || allTracksLoaded">
-                
-                <!-- Cabecera de la tabla -->
-                <div class="tracks-header">
-                  <div class="header-number">#</div>
-                  <div class="header-title">TÍTULO</div>
-                  <div class="header-album">ÁLBUM</div>
-                  <div class="header-duration">
-                    <mat-icon>schedule</mat-icon>
-                  </div>
+              }
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleControls"
+              data-bs-slide="prev">
+              <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+              <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleControls"
+              data-bs-slide="next">
+              <span class="carousel-control-next-icon" aria-hidden="true"></span>
+              <span class="visually-hidden">Next</span>
+            </button>
+          </div>
+
+          @if (selectedPlaylist) {
+          <div class="playlist-details" id="playlist-details">
+            <p class="info-text">INFORMACIÓN DE LA PLAYLIST:</p>
+
+            <div class="playlist-details-header">
+              <img [src]="selectedPlaylist.images[0]?.url || 'assets/default-playlist.png'" alt="Playlist cover"
+                class="playlist-cover">
+              <div class="playlist-details-info">
+                <p class="playlist-details-info-badge">Nombre de la playlist:
+                  <span>{{ selectedPlaylist.name }}</span>
+                </p>
+                <p class="playlist-details-info-description">
+                  Descripcion:
+                  <span>{{ selectedPlaylist.description }}</span>
+                </p>
+                <div class="more-info">
+                  <p class="playlist-details-info-followers">Seguidores: {{ selectedPlaylist.followers?.total}}</p>
+                  <p class="playlist-details-info-owner">Creador: {{ selectedPlaylist.owner?.display_name}}</p>
+                  <p class="playlist-details-info-tracks">Canciones: {{ selectedPlaylist.tracks?.total}}</p>
                 </div>
-    
-                
-                <!-- Lista de canciones -->
-                @for (track of selectedPlaylist.tracks.items; track track.id; let i = $index) {
+
+              </div>
+
+              <div class="playlist-details-tracks">
+                <div class="tracks-container" infiniteScroll (scrolled)="loadMoreTracks()" [scrollWindow]="true"
+                  [infiniteScrollDistance]="2" [infiniteScrollThrottle]="300"
+                  [infiniteScrollDisabled]="loadingMore || allTracksLoaded">
+
+                  @for (track of selectedPlaylist.tracks.items; track track.id; let i = $index) {
                   <div class="track-item" (click)="playTrackPreview(track)">
-                    <div class="track-number">{{ i + 1 }}</div>
-                    
-                    <div class="track-info">
-                      <img [src]="track.image || 'assets/default-track.png'" 
-                           alt="Album cover" 
-                           class="track-image">
-                      
-                      <div class="track-text">
-                        <div class="track-name" [class.playing]="isTrackPlaying(track.id)">
-                          {{ track.name }}
+                    <div class="track-important-info">
+                      <img [src]="track.image || 'assets/default-track.png'" alt="Album cover" class="track-image">
+                    <div class="track-name" [class.playing]="isTrackPlaying(track.id)">
+                          <p>{{ track.name }}</p>
                         </div>
+                    </div>
+                    <div class="track-info">
+                      
+
+                      <div class="track-text">
+                        
                         <div class="track-artists">
-                          {{ track.artists.join(', ') }}
+                          <p>
+                            <span>Artista: </span>
+                            {{ track.artists.join(', ') }}
+                          </p>
+                        </div>
+                        <div class="track-album">
+                          <p> <span>Album: </span> {{ track.album }}</p>
+                        </div>
+
+                        <div class="track-duration">
+                          
+                          <p><span>Duración: </span>{{ track.duration }}</p>
                         </div>
                       </div>
                     </div>
-                    
-                    <div class="track-album">{{ track.album }}</div>
-                    
-                    <div class="track-duration">
-                      {{ track.duration }}
-                      @if (track.previewUrl) {
-                        <button mat-icon-button 
-                                (click)="$event.stopPropagation(); togglePreview(track)"
-                                class="play-button">
-                          <mat-icon>{{ isTrackPlaying(track.id) ? 'pause' : 'play_arrow' }}</mat-icon>
-                        </button>
-                      }
-                    </div>
                   </div>
-                }
-    
-                <!-- Indicador de carga -->
-                @if (loadingMore) {
+
+
+                  }
+
+                  @if (loadingMore) {
                   <div class="loading-more">
                     <mat-spinner diameter="40"></mat-spinner>
                     <span>Cargando más canciones...</span>
                   </div>
-                }
-    
-                <!-- Mensaje cuando no hay más canciones -->
-                @if (!loadingMore && selectedPlaylist.tracks.items.length >= selectedPlaylist.tracks.total) {
+                  }
+
+                  @if (!loadingMore && selectedPlaylist.tracks.items.length >= selectedPlaylist.tracks.total) {
                   <div class="no-more-tracks">
                     Has llegado al final de la playlist
                   </div>
-                }
+                  }
+                </div>
               </div>
-            </mat-card>
+            </div>
           </div>
-        }
+          }
+        </div>
       </div>
-    </div>  
-  </mat-tab>
-  <mat-tab label="DASHBOARD"> <app-dashboard> </app-dashboard> </mat-tab>
-  <mat-tab label="DESCARGAR"> Content 3 </mat-tab>
-</mat-tab-group>
-
+    </mat-tab>
+    <mat-tab label="DASHBOARD"> <app-dashboard> </app-dashboard> </mat-tab>
+    <mat-tab label="DESCARGAR"> Content 3 </mat-tab>
+  </mat-tab-group>
+</div>

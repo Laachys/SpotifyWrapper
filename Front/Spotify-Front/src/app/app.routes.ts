@@ -10,7 +10,7 @@ export const routes: Routes = [
     { path: 'login', component: SpotifyLoginComponent },
     { path: 'callback', component: SpotifyCallbackComponent },
     { path: 'playlists', component: PlaylistsComponent, canActivate: [authGuard], children: [
-        { path: ':id', component: DashboardComponent } // Si el dashboard se muestra dentro
+        { path: ':id', component: DashboardComponent }
       ]
     },
     { path: 'authcallback', component: SpotifyCallbackComponent },

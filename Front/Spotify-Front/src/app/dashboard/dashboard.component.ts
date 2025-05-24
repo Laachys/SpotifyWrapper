@@ -1,13 +1,13 @@
 import { Component, OnInit } from '@angular/core';
-import { SpotifyDataService } from '../spotify-data.service'; // Asegúrate que la ruta sea correcta
+import { SpotifyDataService } from '../spotify-data.service'; 
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-// Importa todos los componentes hijos que usas
 import { ProfileCardComponent } from './components/profile-card/profile-card.component';
 import { GenreChartComponent } from './components/genre-chart/genre-chart.component';
 import { RecentActivityComponent } from './components/recent-activity/recent-activity.component';
 import { TopArtistsComponent } from './components/top-artists/top-artists.component';
 import { TopTracksComponent } from './components/top-tracks/top-tracks.component';
-import { NgxChartsModule, ScaleType } from '@swimlane/ngx-charts'; // Importa ScaleType para el colorScheme
+import { NgxChartsModule } from '@swimlane/ngx-charts';
+import { DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-dashboard',
@@ -21,8 +21,9 @@ import { NgxChartsModule, ScaleType } from '@swimlane/ngx-charts'; // Importa Sc
     TopTracksComponent,
     RecentActivityComponent,
     TopArtistsComponent,
-    NgxChartsModule // Necesario si tienes algún ngx-charts directamente en dashboard.component.html (como recentPlays)
-  ]
+    NgxChartsModule 
+  ],
+   providers: [DatePipe]
 })
 export class DashboardComponent implements OnInit {
   isLoading = true;
@@ -30,18 +31,12 @@ export class DashboardComponent implements OnInit {
   topArtists: any[] = [];
   topTracks: any[] = [];
   recentPlays: any[] = [];
-  genreData: any[] = []; // Inicializado como array vacío, tipo array de 'any'
+  genreData: { name: string; value: number }[] = []; 
   topArtistsChartData: any[] = [];
+  selectedGenreTimeRange: string = 'medium_term';
 
-  // Configuración de gráficos para el gráfico de actividad reciente (si está en este componente)
-  colorScheme = {
-    name: 'spotify',
-    selectable: true,
-    group: ScaleType.Ordinal,
-    domain: ['#1DB954', '#191414', '#B3B3B3', '#535353', '#FFFFFF']
-  };
 
-  constructor(private dashboardService: SpotifyDataService) {}
+  constructor(private dashboardService: SpotifyDataService, private datePipe: DatePipe) { }
 
   ngOnInit(): void {
     this.loadDashboardData();
@@ -54,103 +49,84 @@ export class DashboardComponent implements OnInit {
       if (!accessToken) {
         console.error('DashboardComponent: No se encontró el token de acceso. Redirigiendo a login...');
         this.isLoading = false;
-        // Puedes añadir una redirección aquí: this.router.navigate(['/login']);
         return;
       }
 
+      this.isLoading = true;
+
       // --- Carga del perfil de usuario ---
-      this.userProfile = await this.dashboardService.getUserProfile().toPromise(); // Pasa el token
-      console.log('DashboardComponent: Perfil de usuario cargado:', this.userProfile);
+      this.userProfile = await this.dashboardService.getUserProfile().toPromise();
 
       // --- Carga de Top Artists ---
       const rawTopArtistsResponse = await this.dashboardService.getTopArtists(5, accessToken).toPromise();
-      this.topArtists = rawTopArtistsResponse?.items || []; // Asegúrate de manejar la ausencia de 'items'
-      console.log('DashboardComponent: Top Artists RAW recibidos:', this.topArtists);
+      this.topArtists = rawTopArtistsResponse?.items || [];
 
-      // --- Transformación de Top Artists para su gráfico (en TopArtistsComponent) ---
       this.topArtistsChartData = this.topArtists.map((artist: any) => ({
         name: artist.name,
-        value: artist.popularity || 0 // Usa popularidad, o 0 si no existe
+        value: artist.popularity || 0
       }));
-      console.log('DashboardComponent: Datos transformados para TopArtistsChart:', this.topArtistsChartData);
 
-      // --- Procesamiento de Géneros ---
-      // Asegúrate de que this.topArtists esté cargado antes de procesar géneros
-      if (this.topArtists.length > 0) {
-        this.processGenreData();
-      } else {
-        console.warn('DashboardComponent: No se recibieron top artists, no se pueden procesar los géneros.');
-        this.genreData = []; // Asegura que esté vacío si no hay artistas
-      }
-      console.log('DashboardComponent: Datos de género procesados:', this.genreData);
+      this.genreData = await this.dashboardService.getGenresFromTopTracks(50, this.selectedGenreTimeRange).toPromise();
 
       // --- Carga de Top Tracks ---
-      const rawTopTracksResponse = await this.dashboardService.getTopTracks().toPromise(); // Pasa el token
+      const rawTopTracksResponse = await this.dashboardService.getTopTracks().toPromise();
       this.topTracks = rawTopTracksResponse?.items || [];
-      console.log('DashboardComponent: Top Tracks RAW recibidos:', this.topTracks);
-
 
       // --- Carga de Recent Plays (y transformación para line-chart si aplica) ---
-      const rawRecentPlaysResponse = await this.dashboardService.getRecentPlays().toPromise(); // Pasa el token y un límite
-      // EJEMPLO DE TRANSFORMACIÓN PARA RECENT PLAYS A FORMATO NGX-CHARTS LINE-CHART
-      // Esto asume que rawRecentPlaysResponse.items contiene objetos con una propiedad 'played_at' y un 'track'
+      console.log('DashboardComponent: Solicitando actividad reciente...');
+      const rawRecentPlaysResponse = await this.dashboardService.getRecentPlays().toPromise();
+      console.log('DashboardComponent: Respuesta RAW de Recent Plays:', rawRecentPlaysResponse);
       if (rawRecentPlaysResponse && rawRecentPlaysResponse.items && Array.isArray(rawRecentPlaysResponse.items)) {
-        const dailyPlaysMap = new Map<string, number>(); // 'YYYY-MM-DD' -> count
+        const dailyHourlyPlaysMap = new Map<string, Map<string, number>>(); 
 
         rawRecentPlaysResponse.items.forEach((play: any) => {
           if (play.played_at) {
             const date = new Date(play.played_at);
-            const dateString = date.toISOString().split('T')[0]; // Formato 'YYYY-MM-DD'
-            dailyPlaysMap.set(dateString, (dailyPlaysMap.get(dateString) || 0) + 1);
-          }
+            const dateString = this.datePipe.transform(date, 'yyyy-MM-dd') || ''; 
+            const hourString = this.datePipe.transform(date, 'HH') || '';
+
+            if (!dailyHourlyPlaysMap.has(dateString)) {
+              dailyHourlyPlaysMap.set(dateString, new Map<string, number>());
+            }
+            const hourlyCounts = dailyHourlyPlaysMap.get(dateString)!;
+            hourlyCounts.set(hourString, (hourlyCounts.get(hourString) || 0) + 1);
+          } 
         });
 
-        this.recentPlays = [{
-          name: 'Reproducciones Diarias',
-          series: Array.from(dailyPlaysMap).map(([date, count]) => ({
-            name: new Date(date), // ngx-charts puede manejar objetos Date para el eje X
-            value: count
-          })).sort((a, b) => a.name.getTime() - b.name.getTime()) // Ordena por fecha
-        }];
-        console.log('DashboardComponent: Datos transformados para RecentPlays (line-chart):', this.recentPlays);
+        const transformedData: any[] = [];
+        const sortedDays = Array.from(dailyHourlyPlaysMap.keys()).sort();
+
+        sortedDays.forEach(dateString => {
+          const hourlyCounts = dailyHourlyPlaysMap.get(dateString)!;
+          const series: any[] = [];
+
+          for (let h = 0; h < 24; h++) {
+            const hourKey = String(h).padStart(2, '0'); 
+            series.push({
+              name: hourKey,
+              value: hourlyCounts.get(hourKey) || 0
+            });
+          }
+
+          transformedData.push({
+            name: this.datePipe.transform(new Date(dateString), 'dd/MM/yyyy') || dateString,
+            series: series
+          });
+        });
+
+        this.recentPlays = transformedData;
+
+        if (this.recentPlays.length === 0 || this.recentPlays[0]?.series?.length === 0) {
+          console.warn('DashboardComponent: Los datos transformados de Recent Plays no tienen ninguna serie o está vacía.');
+        }
       } else {
-        console.warn('DashboardComponent: No se recibieron datos de actividad reciente o el formato no es el esperado.');
+        console.warn('DashboardComponent: No se recibieron datos de actividad reciente o el formato RAW no es el esperado. Se asignará array vacío a recentPlays.', rawRecentPlaysResponse);
         this.recentPlays = [];
       }
-
       this.isLoading = false; // Finaliza el estado de carga
     } catch (error) {
       console.error('DashboardComponent: Error al cargar datos del dashboard:', error);
       this.isLoading = false; // Asegura que se desactive la carga incluso en error
-    }
-  }
-
-  private processGenreData() {
-    console.log('DashboardComponent: Iniciando procesamiento de datos de género.');
-    console.log('DashboardComponent: Artistas a procesar para géneros:', this.topArtists);
-
-    if (this.topArtists && this.topArtists.length > 0) {
-      const genreCount: { [key: string]: number } = {};
-
-      this.topArtists.forEach((artist: any) => {
-        // MUY IMPORTANTE: Verifica que 'genres' exista y sea un ARRAY de strings
-        if (artist.genres && Array.isArray(artist.genres) && artist.genres.every((g: any) => typeof g === 'string')) {
-          artist.genres.forEach((genre: string) => {
-            genreCount[genre] = (genreCount[genre] || 0) + 1;
-          });
-        } else {
-          console.warn(`DashboardComponent: Artista '${artist.name || 'Desconocido'}' no tiene géneros válidos o la propiedad 'genres' no es un array de strings. Valor de genres:`, artist.genres);
-        }
-      });
-
-      this.genreData = Object.keys(genreCount).map(genre => ({
-        name: genre,
-        value: genreCount[genre]
-      }));
-      console.log('DashboardComponent: genreData FINAL (después de procesamiento):', this.genreData);
-    } else {
-      console.warn('DashboardComponent: No hay artistas en this.topArtists para procesar géneros. genreData se mantendrá vacío.');
-      this.genreData = [];
     }
   }
 }

@@ -17,7 +17,7 @@ import { GenreChartComponent } from './dashboard/components/genre-chart/genre-ch
 @NgModule({
   declarations: [
     AppComponent,
-    SpotifyLoginComponent,  // ← aquí
+    SpotifyLoginComponent, 
     SpotifyCallbackComponent,
     DashboardComponent,
     PlaylistsComponent,
@@ -26,13 +26,11 @@ import { GenreChartComponent } from './dashboard/components/genre-chart/genre-ch
     TopArtistsComponent,
     TopTracksComponent,
     GenreChartComponent
-    // otros componentes…
   ],
   imports: [
     BrowserModule,
     HttpClientModule,
     NgxChartsModule
-    // otros módulos (FormsModule, HttpClientModule, etc.)
   ],
   providers: [provideHttpClient(withFetch()),],
   bootstrap: [AppComponent]

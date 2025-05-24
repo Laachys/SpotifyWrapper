@@ -1,10 +1,11 @@
 import { Inject, Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
-import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { isPlatformBrowser } from '@angular/common';
+let spotifyAuthServiceInstanceCounter = 0;
 
 @Injectable({
   providedIn: 'root',
@@ -13,23 +14,31 @@ export class SpotifyAuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
   private backendUrl = environment.backendUrl;
-  // public currentUser: string | null = null;
-  private accessTokenSubject = new BehaviorSubject<string | null>(null);
   private userSubject = new BehaviorSubject<{ id?: string, display_name?: string, images?: any[] } | null>(null);
- public user$: Observable<{ id?: string, display_name?: string, images?: any[] } | null> = this.userSubject.asObservable();
-  
+  public user$: Observable<{ id?: string, display_name?: string, images?: any[] } | null> = this.userSubject.asObservable();
+  private _isLoggedInSubject = new BehaviorSubject<boolean>(false);
+  public isLoggedIn$: Observable<boolean> = this._isLoggedInSubject.asObservable();
+  public instanceId: number | undefined;
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+    this.instanceId = ++spotifyAuthServiceInstanceCounter;
+
     if (isPlatformBrowser(this.platformId)) {
       const storedUser = localStorage.getItem('spotify_user');
+      const accessToken = this.getAccessToken();
+      const expirationTime = this.getExpirationTime();
+      if (accessToken && expirationTime && expirationTime > Date.now()) {
+        this._isLoggedInSubject.next(true);
+
+      }
       if (storedUser) {
         try {
           this.userSubject.next(JSON.parse(storedUser));
           this.userSubject.forEach(element => {
-            console.log(element);
           });
         } catch (e) {
           console.error('Error parsing stored user data:', e);
-          localStorage.removeItem('spotify_user'); // Limpiar datos corruptos
+          console.error(`[SpotifyAuthService, ID:${this.instanceId}]`);
+          localStorage.removeItem('spotify_user');
         }
       }
     }
@@ -43,30 +52,30 @@ export class SpotifyAuthService {
   handleCallback(code: string) {
     return this.http.get(`${this.backendUrl}/callback`, { params: { code } });
   }
-  /**
-   * Inicia el flujo de autenticación con Spotify
-   */
+  
   initiateAuthFlow() {
     window.location.href = `${this.backendUrl}/login`;
-    
+
   }
 
   /**
    * Intercambia el código de autorización por tokens
    */
   exchangeCodeForToken(code: string): Observable<any> {
+
     return this.http.get<SpotifyTokenResponse & { user_profile?: any }>(
       `${this.backendUrl}/callback?code=${code}`
     ).pipe(
-       tap(response => {
-        this.storeTokens(response); // Guarda tokens
-
-        // Si el backend devuelve el perfil del usuario directamente, úsalo
+      tap(response => {
+        try {
+          this.storeTokens(response);
+        } catch (e) {
+          console.error(`[SpotifyAuthService, ID:${this.instanceId}] ERROR CATCHED DENTRO DEL TAP al llamar a storeTokens:`, e);
+        }
         if (response.user_profile) {
           this.userSubject.next(response.user_profile);
           this.safeLocalStorage()?.setItem('spotify_user', JSON.stringify(response.user_profile));
         } else if (response.display_name) {
-          // Si solo devuelve display_name, actualiza solo eso (menos ideal, mejor el perfil completo)
           this.userSubject.next({ display_name: response.display_name });
           this.safeLocalStorage()?.setItem('spotify_user', JSON.stringify({ display_name: response.display_name }));
         }
@@ -105,10 +114,13 @@ export class SpotifyAuthService {
    * Almacena los tokens en el localStorage
    */
   private storeTokens(response: SpotifyTokenResponse): void {
+
     if (typeof window !== 'undefined') {
       localStorage.setItem('spotify_access_token', response.access_token);
       localStorage.setItem('spotify_refresh_token', response.refresh_token);
       localStorage.setItem('spotify_token_expires_at', (Date.now() + (response.expires_in * 1000)).toString());
+      this._isLoggedInSubject.next(true);
+
     }
   }
 
@@ -116,11 +128,15 @@ export class SpotifyAuthService {
    * Elimina todos los tokens del almacenamiento
    */
   clearTokens(): void {
+
     if (typeof window !== 'undefined') {
       localStorage.removeItem('spotify_access_token');
       localStorage.removeItem('spotify_refresh_token');
       localStorage.removeItem('spotify_token_expires_at');
+      this._isLoggedInSubject.next(false);
     }
+
+    this.router.navigate(['/login']);
   }
 
   getAccessToken(): string | null {
@@ -176,31 +192,11 @@ export class SpotifyAuthService {
     return false;
   }
 
-  /**
-   * Actualiza todos los tokens a la vez
-   */
-   updateTokens(response: SpotifyTokenResponse): void {
-    // this.storeTokens(response); // Esta función privada es la que guarda en localStorage
-    this.accessTokenSubject.next(response.access_token);
-    
-    // Guarda también el nombre del usuario
-    this.userSubject.next({
-      display_name: response.display_name
-    });
-
-   const storage = this.safeLocalStorage();
-    if (storage) {  // ✅ Verifica si está disponible
-      storage.setItem('spotify_user', JSON.stringify({
-        display_name: response.display_name
-      }));
-    }
-  }
-
 
   // Método seguro para usar localStorage
   private safeLocalStorage(): Storage | null {
     if (isPlatformBrowser(this.platformId)) {
-      return localStorage;  // ✅ Solo se ejecuta en el navegador
+      return localStorage;
     }
     return null;
   }
@@ -208,7 +204,7 @@ export class SpotifyAuthService {
   getDisplayName(): string | undefined {
     return this.userSubject.value?.display_name;
   }
-  
+
   /**
    * Cierra la sesión limpiando los tokens y redirigiendo al login
    */
@@ -216,25 +212,8 @@ export class SpotifyAuthService {
     this.clearTokens();
     this.router.navigate(['/login']);
   }
-
-  // public getUser(): string | null {
-  //   return this.currentUser;
-  // }
 }
 
-
-// export class SpotifyAuthService {
-//   private backendUrl = environment.backendUrl;
-
-
-//   initiateLogin() {
-//     window.location.href = `${this.backendUrl}/login`;
-//   }
-
-//   handleCallback(code: string) {
-//     return this.http.get(`${this.backendUrl}/callback`, { params: { code } });
-//   }
-// }
 
 export interface SpotifyTokenResponse {
   access_token: string;

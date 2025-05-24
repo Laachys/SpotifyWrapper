@@ -1,0 +1,44 @@
+$primary-green: #1DB954;
+$primary-ligth-green: #7dcf99;
+$primary-dark: #191414;
+$primary-white: #FFFFFF; 
+$ligth-gray: #B3B3B3; 
+$dark-gray:#535353; 
+$ligth-red:#FFCDD2; 
+$ligth-blue:#4682B4; 
+$orange: #FFA500; 
+
+$primary: $primary-green; 
+$secondary: $dark-gray; 
+$success: $primary-green;
+$info: $ligth-blue;    
+$warning: $orange;      
+$danger: $ligth-red;    
+$light: $ligth-gray;     
+$dark: $primary-dark;
+
+$theme-colors: (
+  "primary": $primary,
+  "secondary": $secondary,
+  "success": $success,
+  "info": $info,
+  "warning": $warning,
+  "danger": $danger,
+  "light": $light,
+  "dark": $dark
+);
+
+$primaryf-font: "Figtree", "Helvetica Neue", sans-serif; 
+
+.btn-primary{
+    background-color: $primary-white;
+    display: flex !important;
+    gap: 8px;
+    span{
+        color: $primary;
+    }
+    .mat-icon{
+    color: $primary;
+
+    }
+}
