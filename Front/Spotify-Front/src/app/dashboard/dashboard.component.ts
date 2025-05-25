@@ -74,7 +74,7 @@ export class DashboardComponent implements OnInit {
 
       // --- Carga de Recent Plays (y transformación para line-chart si aplica) ---
       console.log('DashboardComponent: Solicitando actividad reciente...');
-      const rawRecentPlaysResponse = await this.dashboardService.getRecentPlays().toPromise();
+      const rawRecentPlaysResponse = await this.dashboardService.getRecentPlays(50).toPromise();
       console.log('DashboardComponent: Respuesta RAW de Recent Plays:', rawRecentPlaysResponse);
       if (rawRecentPlaysResponse && rawRecentPlaysResponse.items && Array.isArray(rawRecentPlaysResponse.items)) {
         const dailyHourlyPlaysMap = new Map<string, Map<string, number>>(); 

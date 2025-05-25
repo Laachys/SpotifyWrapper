@@ -17,9 +17,16 @@
     margin: auto;
    cursor: pointer;
 
+      .carousel-inner{
+      border-radius: 16px;
+
+      }
+
    img{
     height: 25rem;
     object-fit: cover;
+    border-radius: 16px;
+
    }
 
 }
